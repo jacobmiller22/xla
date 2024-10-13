@@ -81,7 +81,15 @@ class Traceback {
     return frames_ != other.frames_;
   }
 
+  static PyType_Slot slots_[];
+
  private:
+
+  static Py_hash_t tp_hash(PyObject* o);
+  static PyObject* tp_richcompare(PyObject* self, PyObject* other, int op);
+  static int tp_traverse(PyObject* self, visitproc visit, void* arg);
+  static int tp_clear(PyObject* self);
+  
   // Each frame is a pair of a code object and a "lasti" instruction location
   // in bytes. The size of _Py_CODEUNIT has changed across different Python
   // versions; the lasti value here has already been multiplied by

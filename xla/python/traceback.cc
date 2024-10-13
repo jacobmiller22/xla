@@ -177,9 +177,8 @@ nb::object Traceback::AsPythonTraceback() const {
   return traceback;
 }
 
-namespace {
 
-Py_hash_t traceback_tp_hash(PyObject* o) {
+/* static */ Py_hash_t Traceback::tp_hash(PyObject* o) {
   Traceback* tb;
   if (!nb::try_cast(nb::handle(o), tb)) {
     PyErr_SetString(PyExc_TypeError, "Expected a Traceback object");
@@ -190,7 +189,7 @@ Py_hash_t traceback_tp_hash(PyObject* o) {
   return s == -1 ? -2 : s;  // -1 must not be used as a Python hash value.
 }
 
-PyObject* traceback_tp_richcompare(PyObject* self, PyObject* other, int op) {
+/* static */ PyObject* Traceback::tp_richcompare(PyObject* self, PyObject* other, int op) {
   if (op != Py_EQ && op != Py_NE) {
     return Py_NewRef(Py_NotImplemented);
   }
@@ -211,15 +210,31 @@ PyObject* traceback_tp_richcompare(PyObject* self, PyObject* other, int op) {
   return Py_NewRef(result ? Py_True : Py_False);
 }
 
+/* static */ int Traceback::tp_traverse(PyObject* self, visitproc visit,
+                          void* arg) {
+  Traceback* tb = nb::inst_ptr<Traceback>(self);
+  for (const auto& frame: tb->frames_) {
+    Py_VISIT(frame.first->co_filename);
+    Py_VISIT(frame.first->co_name);
+  }
+}
+
+/* static */ int Traceback::tp_clear(PyObject* self) {
+  Traceback* tb = nb::inst_ptr<Traceback>(self);
+  tb->frames_.clear();
+  return 0;
+}
+
 // It turns out to be slightly faster to define a tp_hash slot rather than
 // defining __hash__ and __eq__ on the class.
-PyType_Slot traceback_slots_[] = {
-    {Py_tp_hash, (void*)traceback_tp_hash},
-    {Py_tp_richcompare, (void*)traceback_tp_richcompare},
+PyType_Slot Traceback::slots_[] = {
+    {Py_tp_hash, (void*)Traceback::tp_hash},
+    {Py_tp_richcompare, (void*)Traceback::tp_richcompare},
+    {Py_tp_traverse, (void*)Traceback::tp_traverse},
+    {Py_tp_clear, (void*)Traceback::tp_clear},
     {0, nullptr},
 };
 
-}  // namespace
 
 void BuildTracebackSubmodule(nb::module_& m) {
   nb::class_<Traceback::Frame>(m, "Frame")
@@ -235,7 +250,7 @@ void BuildTracebackSubmodule(nb::module_& m) {
       });
 
   nb::class_<Traceback> traceback(m, "Traceback",
-                                  nb::type_slots(traceback_slots_),
+                                  nb::type_slots(Traceback::slots_),
                                   "Represents a Python stack trace.");
   traceback.def_prop_rw_static(
       "enabled", [](nb::object /* cls */) { return Traceback::enabled(); },

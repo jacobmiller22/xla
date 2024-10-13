@@ -74,6 +74,7 @@ py_strict_test(
         ":xla_client",
         ":xla_extension",
         "@absl_py//absl/testing:absltest",
+        "@ml_dtypes",
     ] + if_google([
         "//third_party/py/numpy",
         "//third_party/py/portpicker",
@@ -803,6 +804,7 @@ py_strict_test(
         "@absl_py//absl/flags",
         "@absl_py//absl/logging",
         "@absl_py//absl/testing:absltest",
+        "@ml_dtypes",
     ] + xla_py_test_deps(),
 )
 
